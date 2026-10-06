@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>吃饭睡觉打XX</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body {
+    background: #ffffff;
+    min-height: 100vh;
+    display: flex; justify-content: center; align-items: center;
+    font-family: 'PingFang SC', 'Microsoft YaHei', 'Segoe UI', sans-serif;
+    padding: 14px;
+    touch-action: manipulation;
+    color: #333;
+  }
+  .app {
+    width: 100%; max-width: 460px;
+    background: #fff;
+    border-radius: 28px;
+    padding: 24px 20px 28px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.08);
+    border: 1px solid #eee;
+  }
+  h1 {
+    text-align: center;
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: #222;
+    margin-bottom: 20px;
+    letter-spacing: 1px;
+  }
+  h1 .accent { color: #ff6b6b; }
+
+  /* 选择界面 */
+  .picker { display: flex; flex-direction: column; gap: 12px; }
+  .picker-title { text-align: center; color: #888; font-size: 0.95rem; margin-bottom: 4px; }
+  .options { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .option {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 14px;
+    border: 2px solid #eee;
+    border-radius: 18px;
+    background: #fafafa;
+    cursor: pointer;
+    transition: 0.15s;
+  }
+  .option:active { transform: scale(0.97); }
+  .option.selected {
+    border-color: #ff6b6b;
+    background: #fff5f5;
+    box-shadow: 0 0 0 3px rgba(255,107,107,0.12);
+  }
+  .option img {
+    width: 44px; height: 44px; border-radius: 50%;
+    object-fit: cover;
+    background: #eee;
+    flex-shrink: 0;
+  }
+  .option .name { font-weight: 700; font-size: 1rem; color: #333; }
+  .option.full { grid-column: span 2; }
+
+  .start-area { margin-top: 20px; }
+  .big-btn {
+    width: 100%;
+    padding: 16px;
+    border: none;
+    border-radius: 18px;
+    background: #ff6b6b;
+    color: #fff;
+    font-size: 1.2rem;
+    font-weight: 800;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: 0.12s;
+    box-shadow: 0 6px 0 #d94f4f;
+  }
+  .big-btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #d94f4f; }
+  .big-btn:disabled { opacity: 0.5; pointer-events: none; }
+
+  /* 游戏界面 */
+  .game-view { display: none; }
+  .game-view.active { display: block; }
+  .picker-view.hidden { display: none; }
+
+  .stats {
+    display: flex; justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .stat {
+    flex: 1;
+    text-align: center;
+    background: #f7f7f7;
+    border-radius: 14px;
+    padding: 10px;
+    margin: 0 4px;
+    font-size: 0.85rem;
+    color: #888;
+  }
+  .stat b { display: block; font-size: 1.6rem; color: #333; margin-top: 2px; }
+
+  .board {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 18px;
+  }
+  .cell {
+    aspect-ratio: 1/1;
+    background: #f2f2f2;
+    border-radius: 50%;
+    display: flex; justify-content: center; align-items: center;
+    position: relative;
+    cursor: pointer;
+    transition: 0.1s;
+    overflow: visible;
+  }
+  .cell:active { background: #e8e8e8; transform: scale(0.97); }
+
+  .head {
+    width: 88%; height: 88%;
+    border-radius: 50%;
+    background-size: cover;
+    background-position: center;
+    animation: pop 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+    pointer-events: none;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    will-change: transform;
+  }
+  @keyframes pop {
+    0% { transform: scale(0.2); opacity: 0; }
+    70% { transform: scale(1.08); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  /* Q弹打中效果 */
+  .head.hit {
+    animation: squash 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  @keyframes squash {
+    0% { transform: scale(1); }
+    35% { transform: scale(0.72); }
+    70% { transform: scale(1.15); }
+    100% { transform: scale(1); }
+  }
+
+  /* 飘字：从头像旁边（右上）飞出，不挡头像 */
+  .float-text {
+    position: absolute;
+    left: 70%;
+    top: 0%;
+    transform: translate(0, -50%);
+    font-size: 1.05rem;
+    font-weight: 900;
+    color: #000;
+    white-space: nowrap;
+    pointer-events: none;
+    animation: floatUp 0.8s ease-out forwards;
+    z-index: 10;
+    line-height: 1;
+  }
+  @keyframes floatUp {
+    0% { opacity: 0; transform: translate(0, -30%) scale(0.7); }
+    20% { opacity: 1; transform: translate(10%, -70%) scale(1.15); }
+    100% { opacity: 0; transform: translate(30%, -160%) scale(1); }
+  }
+
+  /* 结束弹层 */
+  .result {
+    position: fixed; inset: 0;
+    background: rgba(255,255,255,0.94);
+    display: none;
+    justify-content: center; align-items: center;
+    z-index: 100;
+    flex-direction: column;
+    padding: 20px;
+    text-align: center;
+  }
+  .result.show { display: flex; }
+  .result .card {
+    background: #fff;
+    border-radius: 24px;
+    padding: 36px 40px;
+    box-shadow: 0 12px 50px rgba(0,0,0,0.12);
+    border: 1px solid #eee;
+  }
+  .result h2 { font-size: 1.3rem; color: #888; font-weight: 600; margin-bottom: 12px; }
+  .result .score-num { font-size: 4rem; font-weight: 900; color: #ff6b6b; line-height: 1; }
+  .result .unit { color: #aaa; font-size: 1rem; margin-top: 6px; }
+  .result .again {
+    margin-top: 26px;
+    padding: 14px 40px;
+    border: none;
+    border-radius: 16px;
+    background: #ff6b6b;
+    color: #fff;
+    font-size: 1.05rem;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 5px 0 #d94f4f;
+    transition: 0.1s;
+  }
+  .result .again:active { transform: translateY(3px); box-shadow: 0 2px 0 #d94f4f; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- 选择界面 -->
+  <div class="picker-view" id="pickerView">
+    <h1>吃饭睡觉打<span class="accent">谁</span>？</h1>
+    <div class="picker">
+      <div class="picker-title">选一个你要打的对象 👇</div>
+      <div class="options" id="options"></div>
+      <div class="start-area">
+        <button class="big-btn" id="startBtn" disabled>开始游戏</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 游戏界面 -->
+  <div class="game-view" id="gameView">
+    <h1 id="gameTitle">打昭昭</h1>
+    <div class="stats">
+      <div class="stat">得分<b id="scoreDisplay">0</b></div>
+      <div class="stat">剩余<b id="timeDisplay">30</b></div>
+    </div>
+    <div class="board" id="board"></div>
+    <button class="big-btn" id="quitBtn">结束游戏</button>
+  </div>
+
+</div>
+
+<!-- 结算层 -->
+<div class="result" id="result">
+  <div class="card">
+    <h2>游戏结束</h2>
+    <div class="score-num" id="finalScore">0</div>
+    <div class="unit">分</div>
+    <button class="again" id="againBtn">再来一局</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  // ============ 角色配置 ============
+  const CHARACTERS = [
+    { id: 'luoluo', name: '萝萝', img: 'https://i.postimg.cc/rwZkFjJw/retouch-2026100621550254.jpg' },
+    { id: 'gugu',   name: '顾顾', img: 'https://i.postimg.cc/0yXs2nfj/wu-biao-ti923-20261002135838.jpg' },
+    { id: 'peipei', name: '裴裴', img: 'https://i.postimg.cc/4x2gNP53/wu-biao-ti933-20261005200223.jpg' },
+    { id: 'zhaozhao', name: '昭昭', img: 'https://i.postimg.cc/rpQS7Xy9/mei-gui-guang-ying-zhong-de-ge-te-shao-nu.png' },
+    { id: 'gulaotou', name: '顾老头', img: 'https://i.postimg.cc/Bn70Qpgt/wu-biao-ti925-20261002135707.jpg' }
+  ];
+
+  // ============ 游戏配置 ============
+  const TOTAL_TIME = 30;
+  const SPAWN_RATE = 750;
+  const MIN_SHOW = 600;
+  const MAX_SHOW = 1200;
+  const MAX_ACTIVE = 5;
+
+  let selectedChar = null;
+  let score = 0;
+  let timeLeft = TOTAL_TIME;
+  let gameActive = false;
+  let countdownTimer = null;
+  let spawnTimer = null;
+  const activeTimeouts = new Map();
+
+  const pickerView = document.getElementById('pickerView');
+  const gameView = document.getElementById('gameView');
+  const optionsEl = document.getElementById('options');
+  const startBtn = document.getElementById('startBtn');
+  const boardEl = document.getElementById('board');
+  const scoreDisplay = document.getElementById('scoreDisplay');
+  const timeDisplay = document.getElementById('timeDisplay');
+  const gameTitle = document.getElementById('gameTitle');
+  const quitBtn = document.getElementById('quitBtn');
+  const result = document.getElementById('result');
+  const finalScore = document.getElementById('finalScore');
+  const againBtn = document.getElementById('againBtn');
+
+  // ============ 音效（更好听的“叮咚”双音） ============
+  let audioCtx = null;
+  function getCtx() {
+    if (!audioCtx) {
+      try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {}
+    }
+    return audioCtx;
+  }
+
+  function playHitSound() {
+    const ctx = getCtx();
+    if (!ctx) return;
+    if (ctx.state === 'suspended') ctx.resume();
+    const now = ctx.currentTime;
+
+    // 清脆叮咚：高音 + 低音快速先后
+    // 第一声：E6 (1318.5 Hz)
+    const o1 = ctx.createOscillator();
+    const g1 = ctx.createGain();
+    o1.type = 'sine';
+    o1.frequency.setValueAtTime(1318.5, now);
+    g1.gain.setValueAtTime(0.0001, now);
+    g1.gain.exponentialRampToValueAtTime(0.28, now + 0.006);
+    g1.gain.exponentialRampToValueAtTime(0.0001, now + 0.16);
+    o1.connect(g1); g1.connect(ctx.destination);
+    o1.start(now); o1.stop(now + 0.18);
+
+    // 第二声：A5 (880 Hz) 稍延迟
+    const o2 = ctx.createOscillator();
+    const g2 = ctx.createGain();
+    o2.type = 'sine';
+    o2.frequency.setValueAtTime(880, now + 0.06);
+    g2.gain.setValueAtTime(0.0001, now + 0.06);
+    g2.gain.exponentialRampToValueAtTime(0.22, now + 0.07);
+    g2.gain.exponentialRampToValueAtTime(0.0001, now + 0.28);
+    o2.connect(g2); g2.connect(ctx.destination);
+    o2.start(now + 0.06); o2.stop(now + 0.3);
+
+    // 加一点轻轻的三角波泛音，让声音更亮
+    const o3 = ctx.createOscillator();
+    const g3 = ctx.createGain();
+    o3.type = 'triangle';
+    o3.frequency.setValueAtTime(2637, now);
+    g3.gain.setValueAtTime(0.0001, now);
+    g3.gain.exponentialRampToValueAtTime(0.08, now + 0.004);
+    g3.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
+    o3.connect(g3); g3.connect(ctx.destination);
+    o3.start(now); o3.stop(now + 0.14);
+  }
+
+  function playEndSound() {
+    const ctx = getCtx();
+    if (!ctx) return;
+    if (ctx.state === 'suspended') ctx.resume();
+    const now = ctx.currentTime;
+    // 上行三音 C5 E5 G5
+    [523.25, 659.25, 783.99].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.0001, now + i * 0.12);
+      gain.gain.exponentialRampToValueAtTime(0.25, now + i * 0.12 + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + i * 0.12 + 0.35);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now + i * 0.12);
+      osc.stop(now + i * 0.12 + 0.38);
+    });
+  }
+
+  // ============ 选择界面 ============
+  function buildOptions() {
+    optionsEl.innerHTML = '';
+    CHARACTERS.forEach((c, i) => {
+      const div = document.createElement('div');
+      div.className = 'option' + (i === 4 ? ' full' : '');
+      div.dataset.id = c.id;
+      div.innerHTML = `<img src="${c.img}" alt="${c.name}"><span class="name">${c.name}</span>`;
+      div.addEventListener('click', () => selectChar(c, div));
+      optionsEl.appendChild(div);
+    });
+  }
+
+  function selectChar(c, el) {
+    selectedChar = c;
+    document.querySelectorAll('.option').forEach(o => o.classList.remove('selected'));
+    el.classList.add('selected');
+    startBtn.disabled = false;
+    startBtn.textContent = `开始打${c.name}`;
+  }
+
+  // ============ 棋盘 ============
+  function createBoard() {
+    boardEl.innerHTML = '';
+    for (let i = 0; i < 9; i++) {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      cell.addEventListener('click', () => handleHit(i, cell));
+      boardEl.appendChild(cell);
+    }
+  }
+
+  function hasHead(idx) {
+    const cell = boardEl.children[idx];
+    return cell && cell.querySelector('.head') !== null;
+  }
+
+  function removeHead(idx, skipTimer) {
+    const cell = boardEl.children[idx];
+    if (!cell) return;
+    const h = cell.querySelector('.head');
+    if (h) h.remove();
+    if (!skipTimer && activeTimeouts.has(idx)) {
+      clearTimeout(activeTimeouts.get(idx));
+      activeTimeouts.delete(idx);
+    }
+  }
+
+  function clearAll() {
+    for (let i = 0; i < 9; i++) removeHead(i);
+    activeTimeouts.forEach(t => clearTimeout(t));
+    activeTimeouts.clear();
+  }
+
+  function spawn() {
+    if (!gameActive || !selectedChar) return;
+    const empty = [];
+    let count = 0;
+    for (let i = 0; i < 9; i++) {
+      if (hasHead(i)) count++;
+      else empty.push(i);
+    }
+    if (count >= MAX_ACTIVE || empty.length === 0) return;
+
+    const idx = empty[Math.floor(Math.random() * empty.length)];
+    const cell = boardEl.children[idx];
+
+    const head = document.createElement('div');
+    head.className = 'head';
+    head.style.backgroundImage = `url('${selectedChar.img}')`;
+    head.dataset.hit = 'false';
+    cell.appendChild(head);
+
+    const life = Math.floor(Math.random() * (MAX_SHOW - MIN_SHOW + 1)) + MIN_SHOW;
+    const tid = setTimeout(() => {
+      if (!gameActive) { removeHead(idx, true); activeTimeouts.delete(idx); return; }
+      const cur = boardEl.children[idx];
+      if (cur) {
+        const h = cur.querySelector('.head');
+        if (h && h.dataset.hit !== 'true') removeHead(idx, true);
+      }
+      activeTimeouts.delete(idx);
+    }, life);
+
+    activeTimeouts.set(idx, tid);
+  }
+
+  // ============ 打中 ============
+  function handleHit(idx, cell) {
+    if (!gameActive || !selectedChar) return;
+    const head = cell.querySelector('.head');
+    if (!head || head.dataset.hit === 'true') return;
+
+    head.dataset.hit = 'true';
+    score++;
+    scoreDisplay.textContent = score;
+
+    playHitSound();
+    head.classList.add('hit');
+
+    // 飘字："耶，打XX" 黑色 在头像旁边
+    const txt = document.createElement('div');
+    txt.className = 'float-text';
+    txt.textContent = '耶，打' + selectedChar.name;
+    cell.appendChild(txt);
+
+    if (activeTimeouts.has(idx)) {
+      clearTimeout(activeTimeouts.get(idx));
+      activeTimeouts.delete(idx);
+    }
+
+    setTimeout(() => {
+      if (head.parentNode) head.remove();
+      if (txt.parentNode) txt.remove();
+    }, 340);
+  }
+
+  // ============ 开始 / 结束 ============
+  function startGame() {
+    if (!selectedChar) return;
+    result.classList.remove('show');
+    pickerView.classList.add('hidden');
+    gameView.classList.add('active');
+
+    gameTitle.innerHTML = `打<span class="accent">${selectedChar.name}</span>`;
+
+    gameActive = false;
+    if (countdownTimer) clearInterval(countdownTimer);
+    if (spawnTimer) clearInterval(spawnTimer);
+    clearAll();
+
+    score = 0;
+    timeLeft = TOTAL_TIME;
+    scoreDisplay.textContent = '0';
+    timeDisplay.textContent = timeLeft;
+    gameActive = true;
+    startBtn.disabled = true;
+
+    countdownTimer = setInterval(() => {
+      if (!gameActive) return;
+      timeLeft--;
+      timeDisplay.textContent = timeLeft;
+      if (timeLeft <= 0) endGame();
+    }, 1000);
+
+    spawnTimer = setInterval(() => { if (gameActive) spawn(); }, SPAWN_RATE);
+    setTimeout(() => { if (gameActive) spawn(); }, 150);
+  }
+
+  function endGame() {
+    if (!gameActive) return;
+    gameActive = false;
+    if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
+    if (spawnTimer) { clearInterval(spawnTimer); spawnTimer = null; }
+    clearAll();
+    playEndSound();
+
+    finalScore.textContent = score;
+    result.classList.add('show');
+    startBtn.disabled = false;
+  }
+
+  // ============ 绑定 ============
+  startBtn.addEventListener('click', startGame);
+  quitBtn.addEventListener('click', endGame);
+  againBtn.addEventListener('click', () => {
+    result.classList.remove('show');
+    startGame();
+  });
+
+  buildOptions();
+  createBoard();
+
+  document.addEventListener('touchstart', () => { getCtx(); }, { once: true });
+  document.addEventListener('click', () => { getCtx(); }, { once: true });
+})();
+</script>
+</body>
+  </html>
